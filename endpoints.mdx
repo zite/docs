@@ -1,0 +1,219 @@
+---
+title: "Endpoints"
+description: "Create typed backend API routes"
+icon: "route"
+---
+
+Endpoints are server-side functions that power your app. Every `.ts` file in `src/api/` becomes an endpoint with typed input, output, and an auto-generated frontend caller.
+
+## Creating an endpoint
+
+Export a `createEndpoint` call from any file in `src/api/`:
+
+```typescript
+// src/api/getTasks.ts
+import { z } from "zod";
+import { Tasks } from ".zite/sdks/myDatabase";
+
+export const getTasks = createEndpoint({
+  description: "Fetch tasks with optional status filter",
+  authenticated: true,
+  inputSchema: z.object({
+    status: z.string().optional(),
+  }),
+  outputSchema: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      status: z.string(),
+    })
+  ),
+  execute: async ({ input, context }) => {
+    return await Tasks.findMany({
+      where: input.status ? { status: input.status } : undefined,
+    });
+  },
+});
+```
+
+Zite auto-generates a typed frontend caller for each endpoint. Call it from your pages and components:
+
+```typescript
+// src/pages/index.tsx
+import { getTasks } from ".zite/sdk";
+
+const tasks = await getTasks({ status: "In Progress" });
+// tasks is typed as { id: string; name: string; status: string }[]
+```
+
+## Configuration
+
+The `createEndpoint` function accepts:
+
+| Field | Type | Description |
+|---|---|---|
+| `description` | `string` | What the endpoint does. Used in the Zite editor for visualization. |
+| `authenticated` | `boolean` | Whether the endpoint requires a logged-in user. When `true`, `context.user` is populated. |
+| `stream` | `boolean` | Enable streaming responses. See [Streaming](#streaming). |
+| `inputSchema` | Zod schema | Validates the request input. |
+| `outputSchema` | Zod schema | Defines the response type. |
+| `execute` | function | The endpoint implementation. Receives `{ input, context, stream }`. |
+
+## Input and output schemas
+
+Schemas use [Zod](https://zod.dev) for validation and type inference. The frontend SDK automatically infers TypeScript types from your schemas — no manual type definitions needed.
+
+```typescript
+export const createTask = createEndpoint({
+  inputSchema: z.object({
+    name: z.string().min(1),
+    assignee: z.string().email().optional(),
+    priority: z.enum(["low", "medium", "high"]),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
+    name: z.string(),
+    createdAt: z.string(),
+  }),
+  execute: async ({ input }) => {
+    return await Tasks.create({
+      name: input.name,
+      assignee: input.assignee,
+      priority: input.priority,
+    });
+  },
+});
+```
+
+## Context
+
+The `context` object provides information about the current request and authenticated user:
+
+```typescript
+execute: async ({ input, context }) => {
+  // context.user is available when authenticated: true
+  const userId = context.user.id;
+  const email = context.user.email;
+}
+```
+
+### context.user
+
+For endpoints with `authenticated: true`, `context.user` contains the signed-in user's information. For [internal apps](/internal-apps), `context.user` is always available regardless of the `authenticated` flag.
+
+**Default fields** (always available):
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | The user's ID. When [user sync](/authentication#user-sync) is enabled, this is the database record ID. |
+| `email` | string | The user's email address. |
+| `firstName` | string \| undefined | First name, if provided. |
+| `lastName` | string \| undefined | Last name, if provided. |
+
+**With [user sync](/authentication#user-sync)**, all fields from the users table are also available:
+
+```typescript
+execute: async ({ context }) => {
+  context.user.role;       // custom field from users table
+  context.user.department; // custom field from users table
+  context.user.teamId;     // custom field from users table
+}
+```
+
+See [Authentication](/authentication) for full details on configuring user sync and how `context.user` is populated.
+
+## Authentication
+
+Set `authenticated: true` to require a signed-in user. For [external apps](/authentication#external-apps), unauthenticated requests return a 401 error. For [internal apps](/internal-apps), all users are automatically authenticated.
+
+```typescript
+export const getProfile = createEndpoint({
+  authenticated: true,
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    id: z.string(),
+    email: z.string(),
+  }),
+  execute: async ({ context }) => {
+    return {
+      id: context.user.id,
+      email: context.user.email,
+    };
+  },
+});
+```
+
+Endpoints without `authenticated: true` can still be called by anyone — signed in or not. Use this for public data that doesn't require a user session.
+
+## Streaming
+
+Enable streaming to send data to the frontend in real-time:
+
+```typescript
+export const summarize = createEndpoint({
+  stream: true,
+  inputSchema: z.object({ text: z.string() }),
+  outputSchema: z.object({ summary: z.string() }),
+  execute: async ({ input, stream }) => {
+    // Forward an async iterable (like an AI model response)
+    const result = await stream.forward(
+      OpenAI.streamText({ prompt: `Summarize: ${input.text}` })
+    );
+    return { summary: result };
+  },
+});
+```
+
+The `stream` object provides:
+
+| Method | Description |
+|---|---|
+| `stream.write(data)` | Send a chunk to the frontend. |
+| `stream.forward(iterable)` | Forward an `AsyncIterable` to the stream and collect the result. |
+
+## Error handling
+
+Throw `ZiteError` to return typed errors to the frontend:
+
+```typescript
+export const getTask = createEndpoint({
+  inputSchema: z.object({ id: z.string() }),
+  outputSchema: z.object({ id: z.string(), name: z.string() }),
+  execute: async ({ input }) => {
+    const task = await Tasks.findOne({ where: { id: input.id } });
+    if (!task) {
+      throw new ZiteError({
+        code: "NOT_FOUND",
+        message: "Task not found",
+      });
+    }
+    return task;
+  },
+});
+```
+
+**Error codes:**
+
+| Code | HTTP Status | Use case |
+|---|---|---|
+| `BAD_REQUEST` | 400 | Invalid input or business logic violation |
+| `UNAUTHORIZED` | 401 | Not logged in |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `NOT_FOUND` | 404 | Resource doesn't exist |
+| `CONFLICT` | 409 | Duplicate or conflicting operation |
+| `RATE_LIMITED` | 429 | Too many requests |
+| `INTERNAL_ERROR` | 500 | Unexpected server error |
+
+## Calling endpoints from the frontend
+
+Zite auto-generates typed caller functions in `.zite/sdk`. Import and call them from your pages and components:
+
+```typescript
+import { getTasks, createTask } from ".zite/sdk";
+
+// Fully typed — input and output types are inferred from your Zod schemas
+const tasks = await getTasks({ status: "In Progress" });
+const newTask = await createTask({ name: "Ship v1", priority: "high" });
+```
+
+The generated callers handle serialization, error handling, and authentication automatically.

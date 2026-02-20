@@ -1,6 +1,76 @@
 ---
 title: "Installation"
 description: "Install the Zite CLI and create a new project"
+icon: "download"
 ---
 
-{/* TODO: Document npm install, zite new command, prerequisites, updates, and troubleshooting */}
+## Prerequisites
+
+- [Node.js](https://nodejs.org) v20.17.0 or higher (LTS recommended)
+- Git
+
+## Install the CLI
+
+<CodeGroup>
+
+```bash npm
+npm i -g zite
+```
+
+```bash pnpm
+pnpm add -g zite
+```
+
+</CodeGroup>
+
+Verify the installation:
+
+```bash
+zite --version
+```
+
+## Create a new project
+
+There are two ways to create a Zite app:
+
+### From zite.com (recommended)
+
+Go to [zite.com/start](https://zite.com/start). This walks you through connecting your GitHub account and creates a repository with a starter template. The app is deployed automatically.
+
+Then clone and start developing:
+
+```bash
+git clone https://github.com/your-org/my-app.git
+cd my-app
+zite login
+zite dev
+```
+
+### From the CLI
+
+Create a new project locally with `zite new`:
+
+```bash
+zite new my-app
+cd my-app
+zite login
+zite dev
+```
+
+This scaffolds a starter project with the default file structure. See [Project structure](/project-structure) for what's included.
+
+## Update the CLI
+
+```bash
+npm i -g zite@latest
+```
+
+## Troubleshooting
+
+### Permission errors on global install
+
+If you get `EACCES` errors, use a Node version manager like [nvm](https://github.com/nvm-sh/nvm) or [volta](https://volta.sh) instead of installing Node globally.
+
+### Node version too old
+
+Zite requires Node.js v20.17.0 or higher. Check your version with `node --version` and update if needed.

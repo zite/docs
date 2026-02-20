@@ -1,42 +1,70 @@
 ---
-title: "Introduction"
+title: "Zite.js"
 description: "The framework for building apps with integrations, permissions, and deployment built in"
+mode: "custom"
 ---
 
-Zite.js is a framework for building internal tools and business apps. It connects to your services, generates type-safe SDKs, and gives you row-level permissions out of the box.
+<div className="landing-hero">
+  <div className="landing-grid" />
+  <div className="landing-hero-content">
+    <p className="landing-tag">[ DEVELOPER FRAMEWORK ]</p>
+    <h1 className="landing-headline">Connect. Build. Ship.</h1>
+    <p className="landing-subtitle">
+      The framework for building apps on your services.
+      Type-safe SDKs, built-in auth, row-level permissions, and one-command deploy.
+    </p>
+    <div className="landing-ctas">
+      <a href="/quickstart" className="landing-btn landing-btn-primary">Go to docs</a>
+      <a href="https://zite.com/start" className="landing-btn landing-btn-secondary">Build an app</a>
+    </div>
+  </div>
+</div>
 
-<Card title="Get started" icon="rocket" href="/quickstart" horizontal>
-  Install the CLI, connect an integration, and deploy your first app.
-</Card>
+<div className="landing-features">
+  <div className="landing-features-grid">
+    <div className="landing-feature">
+      <h3 className="landing-feature-title">Auto-generated SDKs</h3>
+      <p className="landing-feature-desc">
+        Connect Airtable, Stripe, Postgres, or any supported service.
+        Zite generates type-safe SDKs from your live schema.
+      </p>
+    </div>
+    <div className="landing-feature">
+      <h3 className="landing-feature-title">Row-level permissions</h3>
+      <p className="landing-feature-desc">
+        Define permissions in code. Control which tables, fields, and
+        records each user can access.
+      </p>
+    </div>
+    <div className="landing-feature">
+      <h3 className="landing-feature-title">Built-in auth</h3>
+      <p className="landing-feature-desc">
+        Internal apps for your team or external apps with email,
+        Google, and SSO sign-in. One hook, no auth plumbing.
+      </p>
+    </div>
+  </div>
+</div>
 
-## Why Zite.js
-
-<Columns cols={3}>
-  <Card title="Integrations" icon="plug">
-    Connect Airtable, Stripe, Postgres, and other services with a single command. Zite generates type-safe SDKs from your live data — no manual API wrangling.
-  </Card>
-  <Card title="Permissions" icon="shield">
-    Define row-level permissions in your code. Control which tables, fields, and records each user can access — whether your app is internal or public.
-  </Card>
-  <Card title="Internal apps" icon="lock">
-    Build apps that are only accessible to your team. Authentication is handled automatically through your Zite workspace.
-  </Card>
-</Columns>
-
-## How it works
-
-<Steps>
-
-<Step title="Connect your services">
-  Link Airtable, Stripe, Postgres, or any supported integration. Zite generates SDKs with full type safety from your live schema.
-</Step>
-
-<Step title="Build your app">
-  Write your app using the auto-generated SDKs. Define permissions directly in code to control data access.
-</Step>
-
-<Step title="Deploy">
-  Push to GitHub and your app is live. Zite handles hosting, authentication, and audit logging.
-</Step>
-
-</Steps>
+<div className="landing-code-section">
+  <div className="landing-code-content">
+    <h2 className="landing-code-title">From zero to deployed in minutes</h2>
+    <div className="landing-code-steps">
+      <div className="landing-code-step">
+        <span className="landing-step-num">1</span>
+        <code>npm i -g zite</code>
+      </div>
+      <div className="landing-code-step">
+        <span className="landing-step-num">2</span>
+        <code>zite connect airtable</code>
+      </div>
+      <div className="landing-code-step">
+        <span className="landing-step-num">3</span>
+        <code>git push</code>
+      </div>
+    </div>
+    <div className="landing-ctas landing-ctas-bottom">
+      <a href="/quickstart" className="landing-btn landing-btn-primary">Get started</a>
+    </div>
+  </div>
+</div>

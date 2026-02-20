@@ -1,0 +1,34 @@
+---
+title: "AI skill"
+description: "Give AI coding tools context about Zite.js for better results"
+icon: "wand-magic-sparkles"
+---
+
+Zite.js publishes a `skill.md` file that describes the framework's capabilities, project structure, and conventions. AI coding tools like [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview), [Cursor](https://www.cursor.com/), and [Windsurf](https://windsurf.com/) can use this file to generate more accurate code when building your app.
+
+## What's in the skill file
+
+The skill file gives AI agents a structured summary of:
+
+- **Capabilities** — what Zite.js can do (integrations, endpoints, permissions, authentication)
+- **Project structure** — where files live and what conventions to follow
+- **Constraints** — what to avoid and what patterns to use
+- **Workflows** — common tasks like connecting an integration, creating an endpoint, or deploying
+
+This is different from reading raw documentation. A skill file tells agents _what they can accomplish_ and _what inputs they need_, rather than requiring them to search through pages of docs.
+
+## Install the skill
+
+Run this from your project directory:
+
+```bash
+npx skills add https://zite.com/docs
+```
+
+This downloads the skill file and makes it available to your AI coding tool.
+
+## Add the MCP server
+
+For deeper documentation search, add the Zite.js MCP server to your AI tool. This gives the agent access to search across all Zite.js documentation at query time.
+
+Follow the setup instructions at [MCP server configuration](https://www.mintlify.com/docs/ai/model-context-protocol).

@@ -1,6 +1,122 @@
 ---
 title: "Internal apps"
 description: "Build apps that are only accessible to your team"
+icon: "lock-keyhole"
 ---
 
-{/* TODO: Document internal app authentication, workspace access control, and impersonation for testing */}
+Internal apps are accessible only to members of your Zite workspace. Authentication is automatic — no sign-in flow and no user sync table required.
+
+## Set up an internal app
+
+Set `accessMode` to `"internal"` in your `zite.config.json`:
+
+```json title="zite.config.json"
+{
+  "accessMode": "internal"
+}
+```
+
+This is the default for new apps. When a team member visits the app, they are automatically authenticated through their Zite account.
+
+## Using the auth SDK
+
+You can use the `useAuth` hook in internal apps to access the current user's information on the frontend:
+
+```typescript
+import { useAuth } from ".zite/auth";
+
+export default function Dashboard() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return <p>Signed in as {user.email}</p>;
+}
+```
+
+In internal mode, `user` is populated automatically — there is no sign-in screen. `loginWithRedirect` and `logout` are not available and will throw an error if called.
+
+## Using context.user in endpoints
+
+In internal apps, `context.user` is always populated with the team member's information:
+
+```typescript
+export const getMyTasks = createEndpoint({
+  authenticated: true,
+  inputSchema: z.object({}),
+  outputSchema: z.array(TaskSchema),
+  execute: async ({ context }) => {
+    return await Tasks.findMany({
+      where: { assignee: context.user.email },
+    });
+  },
+});
+```
+
+## Permissions
+
+Internal apps use the same [permissions](/permissions) system as external apps. Define roles and rules in `zite.roles.json` to control what different team members can do.
+
+```json title="zite.roles.json"
+{
+  "version": "1.0",
+  "defaultBehavior": "deny",
+  "roles": [
+    {
+      "name": "admin",
+      "condition": {
+        "type": "user_field_match",
+        "userField": "role",
+        "operator": "equals",
+        "value": "admin"
+      }
+    },
+    {
+      "name": "member",
+      "condition": {
+        "type": "is_authenticated"
+      }
+    }
+  ],
+  "integrations": {
+    "airtable": {
+      "tables": {
+        "Tasks": {
+          "rules": [
+            {
+              "roles": ["admin"],
+              "operations": ["read", "create", "update", "delete"]
+            },
+            {
+              "roles": ["member"],
+              "operations": ["read", "create"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+<Tip>
+  Even though all workspace members are authenticated, permissions let you restrict what each person can do. An internal bug tracker might let everyone read tasks but only admins delete them.
+</Tip>
+
+## Testing as different users
+
+During local development (`zite dev`), you can impersonate other team members to test how the app behaves for different users and roles. The dev server provides a user switcher in the toolbar.
+
+## When to use internal vs external
+
+| | Internal | External |
+|---|---|---|
+| **Who can access** | Workspace members only | Anyone on the web |
+| **Auth flow** | Automatic, no sign-in screen | Users sign in with email, Google, or SSO |
+| **`useAuth()` behavior** | `user` is always populated | `user` is `null` until signed in |
+| **`loginWithRedirect` / `logout`** | Not available (throws error) | Available |
+| **`context.user` in endpoints** | Always populated | Only when `authenticated: true` and user is signed in |
+| **Use case** | Team tools, dashboards, admin panels | Customer-facing apps, public tools |
+| **Permissions** | Same `zite.roles.json` system | Same `zite.roles.json` system |
+
+See [Authentication](/authentication) for full details on the auth SDK and setting up external apps.

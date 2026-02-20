@@ -1,6 +1,252 @@
 ---
 title: "Integrations"
 description: "Connect services and use auto-generated SDKs"
+icon: "puzzle"
 ---
 
-{/* TODO: Document connecting integrations, auto-generated SDKs, and available integrations (Airtable, Stripe, Postgres, Zite Database, etc.) */}
+Zite connects to your services and generates type-safe SDKs so you can read and write data without managing API clients or credentials. The `zite connect` command handles authentication, updates your config, and generates the SDK in one step.
+
+If you haven't connected your first integration yet, see the [quickstart](/quickstart).
+
+## Connect a service
+
+<Steps>
+
+<Step title="Run the connect command">
+
+```bash
+zite connect airtable --as salesAirtable
+```
+
+The `--as` flag sets the integration ID — the key used in your config and the import path for the SDK.
+
+</Step>
+
+<Step title="Complete authentication">
+
+A browser window opens to complete the OAuth flow. Your credentials are stored securely on your Zite account — they never live in your codebase.
+
+</Step>
+
+<Step title="Use the SDK">
+
+Zite adds the integration to your `zite.config.json` and generates a type-safe SDK at `.zite/sdks/<integrationId>`. Import and use it in your [endpoints](/endpoints):
+
+```typescript
+import { Deals } from ".zite/sdks/salesAirtable";
+
+const deals = await Deals.findMany();
+```
+
+</Step>
+
+</Steps>
+
+## Available integrations
+
+| Integration | Type | Operations |
+|---|---|---|
+| Airtable | Database | `findOne`, `findMany`, `create`, `update`, `delete` |
+| Zite Database | Database | `findOne`, `findMany`, `create`, `bulkCreate`, `update`, `delete` |
+| Google Sheets | Spreadsheet | `findAll`, `create`, `update` |
+| Slack | Messaging | `sendMessage` |
+| OpenAI | AI | `generateText`, `generateObject`, `streamText`, `generateImage` |
+| Email | Email | `send` |
+| Google Calendar | Calendar | `listEvents`, `getEvent`, `createEvent`, `updateEvent`, `deleteEvent` |
+
+## Configuration
+
+Each integration is declared in `zite.config.json` under the `integrations` key. The key is the **integration ID** — it determines the SDK import path and is how you reference the integration throughout your app.
+
+```json title="zite.config.json"
+{
+  "integrations": {
+    "myDatabase": {
+      "type": "databases",
+      "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+      "basePublicIdentifier": "base_abc123"
+    },
+    "salesAirtable": {
+      "type": "airtable",
+      "connectionId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "baseId": "appXYZ789"
+    },
+    "notificationsSlack": {
+      "type": "slack",
+      "connectionId": "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+      "channelId": "C01ABC"
+    }
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `type` | The service type: `"databases"`, `"airtable"`, `"googlesheets"`, `"slack"`, `"openai"`, `"email"`, `"googlecalendar"`. |
+| `connectionId` | UUID linking to the service connection in your Zite account. Set automatically by `zite connect`. |
+| Other fields | Service-specific configuration (e.g., `baseId` for Airtable, `channelId` for Slack). Set during the connect flow. |
+
+<Info>
+  The `connectionId` and service-specific fields are managed by `zite connect`. You typically don't need to edit these by hand.
+</Info>
+
+## Using the SDK
+
+Each integration generates an SDK file at `.zite/sdks/<integrationId>`. Import the generated classes from the path matching your integration key.
+
+### Database integrations
+
+Database integrations (Airtable, Zite Database, Google Sheets) generate a class per table with CRUD methods.
+
+```typescript
+import { Tasks } from ".zite/sdks/myDatabase";
+
+// List records
+const tasks = await Tasks.findMany();
+
+// Find one record
+const task = await Tasks.findOne({ where: { id: "rec123" } });
+
+// Create a record
+const newTask = await Tasks.create({
+  name: "Ship v1",
+  status: "In Progress",
+});
+
+// Update a record
+await Tasks.update({ where: { id: "rec123" }, data: { status: "Done" } });
+
+// Delete a record
+await Tasks.delete({ where: { id: "rec123" } });
+```
+
+### Filtering
+
+Database queries support Prisma-style filter operators:
+
+```typescript
+import { Tasks } from ".zite/sdks/myDatabase";
+
+// Exact match
+const activeTasks = await Tasks.findMany({
+  where: { status: "In Progress" },
+});
+
+// Comparison operators
+const recentTasks = await Tasks.findMany({
+  where: {
+    createdAt: { gte: new Date("2025-01-01") },
+    priority: { in: ["high", "critical"] },
+  },
+});
+
+// Pagination
+const page = await Tasks.findMany({
+  where: { status: "Done" },
+  limit: 20,
+});
+```
+
+**Available operators:**
+
+| Operator | Description |
+|---|---|
+| `not` | Not equal to |
+| `in` | In array |
+| `notIn` | Not in array |
+| `lt` | Less than |
+| `lte` | Less than or equal to |
+| `gt` | Greater than |
+| `gte` | Greater than or equal to |
+| `contains` | Contains value |
+
+### Slack
+
+```typescript
+import { Slack } from ".zite/sdks/notificationsSlack";
+
+await Slack.sendMessage({
+  channel: "#general",
+  text: "Deployment complete",
+});
+```
+
+### OpenAI
+
+```typescript
+import { OpenAI } from ".zite/sdks/myOpenai";
+
+const result = await OpenAI.generateText({
+  prompt: "Summarize the following tasks",
+});
+
+const structured = await OpenAI.generateObject({
+  prompt: "Extract the name and email from this text",
+  schema: z.object({ name: z.string(), email: z.string() }),
+});
+```
+
+### Email
+
+```typescript
+import { Email } from ".zite/sdks/myEmail";
+
+await Email.send({
+  to: "alice@example.com",
+  subject: "Your report is ready",
+  body: "Click here to view your weekly summary.",
+});
+```
+
+### Google Calendar
+
+```typescript
+import { GoogleCalendar } from ".zite/sdks/myCalendar";
+
+const events = await GoogleCalendar.listEvents({
+  timeMin: new Date("2025-01-01"),
+  timeMax: new Date("2025-01-31"),
+});
+
+await GoogleCalendar.createEvent({
+  summary: "Team standup",
+  start: new Date("2025-01-15T09:00:00"),
+  end: new Date("2025-01-15T09:30:00"),
+});
+```
+
+## Multiple connections
+
+You can connect the same service type more than once with different integration IDs:
+
+```bash
+zite connect airtable --as salesAirtable
+zite connect airtable --as marketingAirtable
+```
+
+Each gets its own SDK at `.zite/sdks/salesAirtable` and `.zite/sdks/marketingAirtable`:
+
+```typescript
+import { Deals } from ".zite/sdks/salesAirtable";
+import { Campaigns } from ".zite/sdks/marketingAirtable";
+```
+
+## Refreshing SDKs
+
+The dev server (`zite dev`) watches for integration changes and auto-regenerates SDKs. If you change your schema in the connected service (add a table, rename a field), restart the dev server or run:
+
+```bash
+zite generate
+```
+
+This fetches the latest metadata from your connected services and regenerates the SDK files in `.zite/sdks/`.
+
+## Next steps
+
+<Card title="Endpoints" icon="route" horizontal href="/endpoints">
+  Use integration SDKs in backend endpoints to build your app's API.
+</Card>
+
+<Card title="Permissions" icon="shield" horizontal href="/permissions">
+  Control which tables, fields, and records each user can access.
+</Card>

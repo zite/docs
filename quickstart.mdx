@@ -1,29 +1,36 @@
 ---
 title: "Quickstart"
-description: "Build and deploy your first Zite app in minutes"
+description: "Deploy your first Zite app and connect an integration"
+icon: "bolt"
 ---
 
-<Info>
-  **Prerequisites**:
-  - Node.js version 20 or higher
-  - Git installed
-  - A [Zite account](https://zite.com/start)
-</Info>
+This guide walks you through creating a Zite app, deploying it, and connecting your first integration.
+
+## Before you begin
+
+Zite.js apps live in Git repositories. When you create a new app, Zite sets up a repository with a starter template and configures automatic deployments.
+
+<Tip>
+  Using an AI coding tool? [Install the Zite.js skill](/ai-skill) for better results when building your app.
+</Tip>
+
+## Deploy your app
+
+Go to [zite.com/start](https://zite.com/start) and complete the onboarding. You'll connect your GitHub account, and Zite will create a repository with a starter template and deploy it automatically.
+
+## View your deployed app
+
+Your app is now live at `https://<your-app-id>.zite.so`.
+
+Find your exact URL on the **Overview** page of your [dashboard](https://zite.com/dashboard).
+
+<Tip>
+  Your app is ready to share with your team immediately. You can add a [custom domain](/deployment) later.
+</Tip>
+
+## Make your first change
 
 <Steps>
-
-<Step title="Create your project">
-
-Go to [zite.com/start](https://zite.com/start) to create a new app. Connect your GitHub account and we'll create a repository with a starter template.
-
-Clone the repository locally:
-
-```bash
-git clone https://github.com/your-org/my-app.git
-cd my-app
-```
-
-</Step>
 
 <Step title="Install the CLI">
 
@@ -45,29 +52,54 @@ See [Install the CLI](/cli/installation) for full details and troubleshooting.
 
 </Step>
 
+<Step title="Clone your repository">
+
+Clone the repository that Zite created during onboarding. You can find the link in your [dashboard](https://zite.com/dashboard).
+
+```bash
+git clone https://github.com/your-org/my-app.git
+cd my-app
+```
+
+</Step>
+
 <Step title="Log in">
 
 ```bash
 zite login
 ```
 
-This authenticates your CLI with your Zite account and connects your local environment to your project's integrations and permissions.
+This connects your local environment to your Zite account, integrations, and permissions.
 
 </Step>
 
-<Step title="Start the dev server">
+<Step title="Preview locally">
 
 ```bash
 zite dev
 ```
 
-Your app is now running at `http://localhost:3000`.
-
-<Tip>The dev server watches for file changes and auto-generates SDKs when your integrations update.</Tip>
+View your app at `http://localhost:3000`. The dev server watches for file changes and auto-generates SDKs when your integrations update.
 
 </Step>
 
-<Step title="Connect an integration">
+<Step title="Push your changes">
+
+Commit and push to trigger a deployment:
+
+```bash
+git add .
+git commit -m "My first change"
+git push
+```
+
+Zite automatically deploys your changes. View your deployment status on the [Overview](https://zite.com/dashboard) page of your dashboard.
+
+</Step>
+
+</Steps>
+
+## Connect an integration
 
 Connect your first service. For example, to connect Airtable:
 
@@ -75,49 +107,48 @@ Connect your first service. For example, to connect Airtable:
 zite connect airtable
 ```
 
-This authenticates with Airtable and generates a type-safe SDK in your `.zite/` directory. Use it in your app immediately:
+This generates a type-safe SDK in your `.zite/` directory. Use it in your [endpoints](/endpoints):
 
 ```typescript
-import { airtable } from ".zite/integrations/airtable";
+import { Tasks } from ".zite/sdks/myAirtable";
 
-const records = await airtable.tasks.list();
-const task = await airtable.tasks.create({
+const tasks = await Tasks.findMany();
+const task = await Tasks.create({
   name: "Ship v1",
   status: "In Progress",
 });
 ```
 
-The SDK is auto-generated from your connected data — field names, types, and relationships are all handled for you.
+The SDK is auto-generated from your live data — field names, types, and relationships are handled for you.
 
-</Step>
+See [Integrations](/integrations) for the full list of supported services and detailed setup guides.
 
-<Step title="Deploy">
+## Choose your access mode
 
-Push your changes to deploy:
+By default, new apps are **internal** — only your Zite workspace members can access them. To build a public-facing app with user sign-in, set `accessMode` to `"external"` in `zite.config.json`:
 
-```bash
-git push
+```json title="zite.config.json"
+{
+  "accessMode": "external"
+}
 ```
 
-Your app is live at `https://my-app.zite.com`.
-
-</Step>
-
-</Steps>
+See [Authentication](/authentication) for how to add sign-in with email, Google, or SSO to external apps.
 
 ## Next steps
 
-<Columns cols={2}>
-  <Card title="Project structure" icon="folder" href="/project-structure">
-    Understand zite.config.json, the lock file, and auto-generated SDKs.
-  </Card>
-  <Card title="Integrations" icon="plug" href="/integrations">
-    Connect Airtable, Stripe, Postgres, and more.
-  </Card>
-  <Card title="Permissions" icon="shield" href="/permissions">
-    Define row-level permissions to control data access.
-  </Card>
-  <Card title="Deployment" icon="rocket" href="/deployment">
-    Deploy, rollback, and manage your live apps.
-  </Card>
-</Columns>
+<Card title="Endpoints" icon="route" horizontal href="/endpoints">
+  Create backend API routes with typed input, output, and authentication.
+</Card>
+
+<Card title="Authentication" icon="key" horizontal href="/authentication">
+  Add user sign-in and link users to your data.
+</Card>
+
+<Card title="Permissions" icon="shield" horizontal href="/permissions">
+  Define role-based and row-level permissions to control data access.
+</Card>
+
+<Card title="Project structure" icon="folder-open" horizontal href="/project-structure">
+  Understand zite.config.json, the .zite/ directory, and file conventions.
+</Card>

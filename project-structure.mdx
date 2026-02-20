@@ -1,6 +1,129 @@
 ---
 title: "Project structure"
-description: "Understand the files and directories in a Zite app"
+description: "Files and directories in a Zite app"
+icon: "folder-open"
 ---
 
-{/* TODO: Document zite.config.json, zite.lock, .zite/ directory, and app file conventions */}
+A Zite app is a Git repository with a standard file structure. When you create an app through [zite.com/start](https://zite.com/start) or `zite new`, you get a starter template with this layout:
+
+```
+my-app/
+├── zite.config.json          # App configuration
+├── tailwind.config.ts        # Tailwind CSS configuration
+├── src/
+│   ├── pages/                # Frontend routes
+│   │   └── index.tsx
+│   ├── components/           # Reusable React components
+│   ├── api/                  # Backend endpoints
+│   │   └── getTasks.ts
+│   └── index.css             # Global styles + theme variables
+└── .zite/                    # Auto-generated (don't edit)
+    ├── sdks/                 # Integration SDKs (one per integration)
+    │   ├── myDatabase.ts
+    │   └── salesAirtable.ts
+    ├── sdk.ts                # Frontend endpoint callers
+    └── auth.ts               # Auth utilities
+```
+
+## zite.config.json
+
+The app configuration file. Controls access mode, integrations, and user sync.
+
+```json
+{
+  "accessMode": "internal",
+  "integrations": {
+    "myDatabase": {
+      "type": "databases",
+      "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+      "basePublicIdentifier": "base_abc123"
+    },
+    "salesAirtable": {
+      "type": "airtable",
+      "connectionId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "baseId": "appXYZ789"
+    }
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `accessMode` | `"internal"` (team only, default) or `"external"` (public). See [Internal apps](/internal-apps) and [Authentication](/authentication). |
+| `integrations` | Connected services. Each key is an integration ID that determines the SDK import path. See [Integrations](/integrations). |
+| `userSync` | Links authenticated users to a database table. See [Authentication](/authentication#user-sync). |
+
+## .zite/ directory
+
+Contains auto-generated files. Do not edit these directly — they are regenerated when you run `zite dev` or `zite generate`.
+
+| Path | Purpose |
+|---|---|
+| `sdks/<integrationId>.ts` | Type-safe SDK for each connected integration. One file per integration. Import in `src/api/` endpoint files. |
+| `sdk.ts` | Frontend caller functions for your endpoints. Import in `src/pages/` and `src/components/`. |
+| `auth.ts` | Authentication utilities (`useAuth` hook). Works in both internal and external apps. See [Authentication](/authentication). |
+
+The SDK file names match the integration keys in your `zite.config.json`. For example, an integration keyed as `"salesAirtable"` generates `.zite/sdks/salesAirtable.ts`.
+
+<Warning>
+  The `.zite/` directory is auto-generated from your integration metadata. Don't edit these files — your changes will be overwritten.
+</Warning>
+
+## src/api/
+
+Every `.ts` file in `src/api/` becomes a backend [endpoint](/endpoints). Files export a `createEndpoint` call that defines the input schema, output schema, and implementation.
+
+```typescript
+// src/api/getTasks.ts
+import { z } from "zod";
+import { Tasks } from ".zite/sdks/myDatabase";
+
+export const getTasks = createEndpoint({
+  authenticated: true,
+  inputSchema: z.object({ status: z.string().optional() }),
+  outputSchema: z.array(z.object({ id: z.string(), name: z.string() })),
+  execute: async ({ input }) => {
+    return await Tasks.findMany({ where: { status: input.status } });
+  },
+});
+```
+
+## src/pages/
+
+Frontend route files. Each file in `src/pages/` maps to a URL path. Pages are React components.
+
+```typescript
+// src/pages/index.tsx
+import { getTasks } from ".zite/sdk";
+
+export default function Home() {
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    getTasks({}).then(setTasks);
+  }, []);
+
+  return <TaskList tasks={tasks} />;
+}
+```
+
+## Theme system
+
+Zite apps use [Tailwind CSS](https://tailwindcss.com) with a theme variable system in `src/index.css`. The CSS variables control colors, fonts, border radius, and shadows. They are compatible with [shadcn/ui](https://ui.shadcn.com) components.
+
+```css
+/* src/index.css */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --radius: 0.5rem;
+    --font-sans: 'Inter', sans-serif;
+    /* ... */
+  }
+}
+```
+
+You can customize the theme by editing the CSS variables. The Zite editor also provides a visual theme editor for adjusting colors, fonts, and spacing.

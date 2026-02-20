@@ -1,6 +1,378 @@
 ---
 title: "Permissions"
-description: "Define row-level permissions to control data access"
+description: "Define role-based permissions to control data access"
+icon: "shield"
 ---
 
-{/* TODO: Document row-level permissions, resource permissions, defining permissions in code, and how permissions work with and without auth */}
+Zite permissions are defined in `zite.roles.json` at the root of your project. The file contains two things: **roles** that determine who a user is, and **rules** that determine what each role can do. Permissions are enforced on every SDK call, both in development and production.
+
+## How permissions work
+
+1. You define **roles** with conditions that determine which users belong to each role.
+2. You define **rules** per integration and table (or resource) that specify which operations each role can perform.
+3. On every SDK call, Zite evaluates the current user against your role conditions and checks whether a matching rule allows the operation.
+
+If no rule matches, the `defaultBehavior` setting determines whether the operation is allowed or denied.
+
+<Warning>
+  If `defaultBehavior` is set to `"allow"`, any operation without a matching rule is permitted. Use `"deny"` in production to ensure only explicitly permitted operations succeed.
+</Warning>
+
+## A minimal example
+
+The simplest `zite.roles.json` defines one role and one rule:
+
+```json title="zite.roles.json"
+{
+  "version": "1.0",
+  "defaultBehavior": "deny",
+  "roles": [
+    {
+      "name": "authenticated",
+      "condition": {
+        "type": "is_authenticated"
+      }
+    }
+  ],
+  "integrations": {
+    "airtable": {
+      "tables": {
+        "Tasks": {
+          "rules": [
+            {
+              "roles": ["authenticated"],
+              "operations": ["read"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+This configuration denies all operations by default, defines one role (`authenticated` — any logged-in user), and allows authenticated users to read the Tasks table in Airtable. All other operations on Tasks, and all operations on other tables, are denied.
+
+## Define roles
+
+Roles are defined in the top-level `roles` array. Each role has a `name` (referenced in rules) and a `condition` (who qualifies).
+
+### `is_authenticated`
+
+Matches any logged-in user. This is the simplest condition.
+
+```json
+{
+  "name": "authenticated",
+  "condition": {
+    "type": "is_authenticated"
+  }
+}
+```
+
+### `user_field_match`
+
+Matches users based on a property of the user object. Requires `userField`, `operator`, and `value`.
+
+```json
+{
+  "name": "admin",
+  "condition": {
+    "type": "user_field_match",
+    "userField": "role",
+    "operator": "equals",
+    "value": "admin"
+  }
+}
+```
+
+You can also match by email domain to create roles for your whole team:
+
+```json
+{
+  "name": "internal",
+  "condition": {
+    "type": "user_field_match",
+    "userField": "email",
+    "operator": "ends_with",
+    "value": "@yourcompany.com"
+  }
+}
+```
+
+<Info>
+  Custom user fields like `role` or `department` are only available when user sync is enabled in your `zite.config.json`. Without user sync, you can only match on `id` and `email`. See [integrations](/integrations#user-sync) for setup details.
+</Info>
+
+### Compound conditions
+
+Combine conditions with `and`, `or`, and `not` operators.
+
+```json title="All conditions must match"
+{
+  "name": "engineering-admin",
+  "condition": {
+    "type": "and",
+    "conditions": [
+      {
+        "type": "user_field_match",
+        "userField": "role",
+        "operator": "equals",
+        "value": "admin"
+      },
+      {
+        "type": "user_field_match",
+        "userField": "department",
+        "operator": "equals",
+        "value": "engineering"
+      }
+    ]
+  }
+}
+```
+
+```json title="Any condition can match"
+{
+  "name": "manager-or-admin",
+  "condition": {
+    "type": "or",
+    "conditions": [
+      {
+        "type": "user_field_match",
+        "userField": "role",
+        "operator": "equals",
+        "value": "admin"
+      },
+      {
+        "type": "user_field_match",
+        "userField": "role",
+        "operator": "equals",
+        "value": "manager"
+      }
+    ]
+  }
+}
+```
+
+```json title="Negate a condition"
+{
+  "name": "non-guest",
+  "condition": {
+    "type": "not",
+    "condition": {
+      "type": "user_field_match",
+      "userField": "role",
+      "operator": "equals",
+      "value": "guest"
+    }
+  }
+}
+```
+
+## Define rules
+
+Rules live under `integrations` in your `zite.roles.json`. Each rule specifies which `roles` it applies to, which `operations` are allowed, and optionally a `rowFilter` for row-level security.
+
+Every rule must include at least one role. Rules are evaluated in order — the first matching rule determines the outcome.
+
+### Table rules
+
+For database integrations (Airtable, Postgres, Zite Database, Google Sheets), define rules under `tables`:
+
+```json
+{
+  "integrations": {
+    "postgres": {
+      "tables": {
+        "Products": {
+          "rules": [
+            {
+              "roles": ["admin"],
+              "operations": ["read", "create", "update", "delete"]
+            },
+            {
+              "roles": ["authenticated"],
+              "operations": ["read"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+Admins get full CRUD access to the Products table. Authenticated users can only read.
+
+### Resource rules
+
+For API and other integrations (Stripe, Google Calendar, Salesforce, Slack), define rules under `resources`:
+
+```json
+{
+  "integrations": {
+    "google-calendar": {
+      "resources": {
+        "events": {
+          "rules": [
+            {
+              "roles": ["admin"],
+              "operations": ["read", "create", "update", "delete"]
+            },
+            {
+              "roles": ["authenticated"],
+              "operations": ["read", "create"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+## Row-level security
+
+For database integrations, you can add a `rowFilter` to a rule to restrict access to specific rows. The filter compares a field in the data to a property of the current user.
+
+Here is a full `zite.roles.json` with row-level security:
+
+```json title="zite.roles.json"
+{
+  "version": "1.0",
+  "defaultBehavior": "deny",
+  "roles": [
+    {
+      "name": "admin",
+      "condition": {
+        "type": "user_field_match",
+        "userField": "role",
+        "operator": "equals",
+        "value": "admin"
+      }
+    },
+    {
+      "name": "authenticated",
+      "condition": {
+        "type": "is_authenticated"
+      }
+    }
+  ],
+  "integrations": {
+    "airtable": {
+      "tables": {
+        "Tasks": {
+          "rules": [
+            {
+              "roles": ["admin"],
+              "operations": ["read", "create", "update", "delete"]
+            },
+            {
+              "roles": ["authenticated"],
+              "operations": ["read", "update", "delete"],
+              "rowFilter": {
+                "field": "owner_id",
+                "operator": "eq",
+                "userField": "id"
+              }
+            },
+            {
+              "roles": ["authenticated"],
+              "operations": ["create"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+The three rules work together:
+
+1. **Admins** can perform any operation on any row in the Tasks table.
+2. **Authenticated users** can read, update, and delete only rows where `owner_id` matches their own user `id`.
+3. **Authenticated users** can create new rows without restriction.
+
+<Tip>
+  Row filters do not apply to `create` operations because the row does not exist yet. Use a separate rule without a `rowFilter` for creates.
+</Tip>
+
+## Default behavior
+
+The `defaultBehavior` field at the root of `zite.roles.json` determines what happens when no rule matches.
+
+- `"deny"` — operations without a matching rule are rejected. Recommended for production.
+- `"allow"` — operations without a matching rule are permitted. Useful during early development.
+
+<Warning>
+  Set `defaultBehavior` to `"deny"` before deploying to production. With `"allow"`, any operation not covered by a rule is permitted, which can expose data unintentionally.
+</Warning>
+
+## Permissions with internal apps
+
+Internal apps (where `accessMode` is `"internal"` in `zite.config.json`) use the same `zite.roles.json` file. Users are authenticated through the Zite workspace, so you can use roles to control what different team members can do within the app.
+
+<Info>
+  Internal apps authenticate users through your Zite workspace. All workspace members are automatically `is_authenticated`. You can further restrict access using `user_field_match` conditions on synced user fields.
+</Info>
+
+See [internal apps](/internal-apps) for full details on internal app authentication.
+
+## Reference
+
+### Role condition types
+
+| Type | Description | Required fields |
+| --- | --- | --- |
+| `is_authenticated` | Matches any logged-in user | None |
+| `user_field_match` | Matches based on a user property | `userField`, `operator`, `value` |
+| `and` | All conditions must match | `conditions` (array) |
+| `or` | At least one condition must match | `conditions` (array) |
+| `not` | Condition must not match | `condition` (single) |
+
+### Operators for `user_field_match`
+
+| Operator | Description |
+| --- | --- |
+| `equals` | Exact match |
+| `not_equals` | Does not match |
+| `contains` | Field contains the value |
+| `starts_with` | Field starts with the value |
+| `ends_with` | Field ends with the value |
+
+### Row filter operators
+
+| Operator | Description |
+| --- | --- |
+| `eq` | Equals |
+| `neq` | Does not equal |
+| `in` | Is in array |
+| `contains` | Contains |
+| `gt` | Greater than |
+| `gte` | Greater than or equal to |
+| `lt` | Less than |
+| `lte` | Less than or equal to |
+
+### Operations
+
+| Operation | SDK methods |
+| --- | --- |
+| `read` | `findOne`, `findMany` |
+| `create` | `create`, `bulkCreate` |
+| `update` | `update` |
+| `delete` | `delete` |
+
+## Next steps
+
+<Card title="Authentication" icon="key" horizontal href="/authentication">
+  Set up user sync to use custom fields in role conditions.
+</Card>
+
+<Card title="Internal apps" icon="lock-keyhole" horizontal href="/internal-apps">
+  Build apps only your team can access.
+</Card>
+
+<Card title="Endpoints" icon="route" horizontal href="/endpoints">
+  Create authenticated endpoints that use permissions.
+</Card>

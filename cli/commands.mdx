@@ -1,6 +1,85 @@
 ---
 title: "Commands"
 description: "CLI command reference"
+icon: "terminal"
 ---
 
-{/* TODO: Document all CLI commands: login, dev, connect, generate, deploy, new, refresh */}
+## zite login
+
+Authenticate with your Zite account. Opens a browser window for OAuth.
+
+```bash
+zite login
+```
+
+This stores your credentials locally and connects your CLI to your Zite workspace, integrations, and permissions.
+
+## zite dev
+
+Start the local development server.
+
+```bash
+zite dev
+```
+
+Your app runs at `http://localhost:3000`. The dev server:
+
+- Watches for file changes and reloads
+- Auto-generates SDKs in `.zite/` when integration metadata changes
+- Provides a user switcher for testing as different team members (internal apps)
+
+## zite connect
+
+Connect an integration to your app.
+
+```bash
+zite connect <service>
+```
+
+Opens a browser window for OAuth authentication with the service. After connecting, Zite updates your `zite.config.json` and generates the SDK.
+
+**Examples:**
+
+```bash
+zite connect airtable
+zite connect slack
+zite connect openai
+```
+
+See [Integrations](/integrations) for the full list of supported services.
+
+## zite generate
+
+Regenerate SDK files from your current integrations.
+
+```bash
+zite generate
+```
+
+Fetches the latest metadata from your connected services and regenerates the `.zite/` directory. Use this after changing your schema in a connected service (e.g., adding a table in Airtable).
+
+<Tip>
+  `zite dev` runs generation automatically on startup. Use `zite generate` when you want to refresh SDKs without starting the dev server.
+</Tip>
+
+## zite new
+
+Scaffold a new Zite project.
+
+```bash
+zite new <project-name>
+```
+
+Creates a new directory with the starter template. See [Installation](/cli/installation) for the full setup flow.
+
+## zite deploy
+
+Manually trigger a deployment.
+
+```bash
+zite deploy
+```
+
+Builds and deploys your app to Zite. This is an alternative to the automatic deployment that happens on `git push`.
+
+See [Deployment](/deployment) for more details.

@@ -1,0 +1,277 @@
+---
+title: "Authentication"
+description: "Add sign-in to your app and control who can access it"
+icon: "key"
+---
+
+Zite apps support two access modes. Set the mode in `zite.config.json`:
+
+| Mode | Who can access | How auth works |
+|---|---|---|
+| `"internal"` | Your Zite workspace members | Automatic. Users are authenticated through their Zite account. |
+| `"external"` | Anyone on the web | Users sign in with email, Google, or SSO. You control the flow with the auth SDK. |
+
+```json title="zite.config.json"
+{
+  "accessMode": "external"
+}
+```
+
+## The auth SDK
+
+The auth SDK provides the `useAuth` hook for managing authentication on the frontend. Import it from `.zite/auth`:
+
+```typescript
+import { useAuth } from ".zite/auth";
+```
+
+`useAuth` returns:
+
+| Property | Type | Description |
+|---|---|---|
+| `user` | object \| null | The authenticated user, or `null` if not signed in. |
+| `isLoading` | boolean | `true` while the auth state is being resolved. |
+| `loginWithRedirect` | function | Redirect the user to the sign-in page. Accepts an optional `{ redirectUrl }`. |
+| `logout` | function | Sign the user out and clear the session. Accepts an optional `{ returnTo }`. |
+
+### External apps
+
+In external apps, `user` is `null` until the user signs in. Use `loginWithRedirect` to start the auth flow:
+
+```typescript
+import { useAuth } from ".zite/auth";
+
+export default function App() {
+  const { user, isLoading, loginWithRedirect, logout } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  if (!user) {
+    return (
+      <div>
+        <h1>Welcome</h1>
+        <button onClick={() => loginWithRedirect()}>Sign in</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p>Welcome, {user.email}</p>
+      <button onClick={() => logout()}>Sign out</button>
+    </div>
+  );
+}
+```
+
+`loginWithRedirect` takes the user to a Zite-hosted sign-in page where they can authenticate with:
+
+- **Email** — a magic link is sent to their inbox
+- **Google** — OAuth sign-in
+- **SSO** — enterprise single sign-on
+
+After authentication, the user is redirected back to your app with a session token.
+
+<Warning>
+  Do not build custom login forms. Always use `loginWithRedirect()` — it handles the full auth flow including token exchange and session management.
+</Warning>
+
+You can pass a `redirectUrl` to control where the user lands after signing in:
+
+```typescript
+loginWithRedirect({ redirectUrl: "/dashboard" });
+```
+
+### Internal apps
+
+In internal apps (`accessMode: "internal"`), authentication happens automatically. The `useAuth` hook still works, but behaves differently:
+
+- `user` is populated automatically with the workspace member's info
+- `loginWithRedirect` and `logout` are not available — calling them throws an error
+- `isLoading` is `true` briefly while the session is established
+
+```typescript
+import { useAuth } from ".zite/auth";
+
+export default function Dashboard() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return <p>Welcome, {user.email}</p>;
+}
+```
+
+<Info>
+  In internal apps, there is no sign-in screen. Workspace members are authenticated through their Zite account automatically.
+</Info>
+
+See [Internal apps](/internal-apps) for more on the internal access mode.
+
+## Backend authentication
+
+On the backend, set `authenticated: true` on endpoints that require a signed-in user. Unauthenticated requests return a 401 error.
+
+```typescript
+export const getProfile = createEndpoint({
+  authenticated: true,
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    id: z.string(),
+    email: z.string(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+  }),
+  execute: async ({ context }) => {
+    return {
+      id: context.user.id,
+      email: context.user.email,
+      firstName: context.user.firstName,
+      lastName: context.user.lastName,
+    };
+  },
+});
+```
+
+### context.user
+
+The `context.user` object is available in any endpoint with `authenticated: true`. For internal apps, it is always populated regardless of the `authenticated` flag.
+
+**Without user sync:**
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | The user's portal ID. |
+| `email` | string | The user's email address. |
+| `firstName` | string \| undefined | First name, if provided during sign-up. |
+| `lastName` | string \| undefined | Last name, if provided during sign-up. |
+
+**With user sync enabled**, `context.user` includes all fields from your users table. See [User sync](#user-sync) below.
+
+## User sync
+
+User sync links authenticated users to a row in one of your connected integrations. This gives you access to custom fields like `role`, `department`, or `team` in your endpoints and [permission rules](/permissions).
+
+### Configure user sync
+
+Add `userSync` to your `zite.config.json`:
+
+```json title="zite.config.json"
+{
+  "accessMode": "external",
+  "userSync": {
+    "enabled": true,
+    "integrationId": "airtable-1",
+    "usersTableId": "tblXXX",
+    "usersEmailFieldId": "fldXXX",
+    "usersFirstNameFieldId": "fldYYY",
+    "usersLastNameFieldId": "fldZZZ"
+  }
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `enabled` | Yes | Set to `true` to enable user sync. |
+| `integrationId` | Yes | The integration containing your users table. |
+| `usersTableId` | Yes | The table ID containing user records. |
+| `usersEmailFieldId` | Yes | The field ID for the user's email (used for lookup). |
+| `usersFirstNameFieldId` | No | The field ID for the user's first name. |
+| `usersLastNameFieldId` | No | The field ID for the user's last name. |
+
+### How it works
+
+When a user authenticates, Zite looks up their email in the users table:
+
+- **If a matching record exists**, its fields are merged into `context.user`.
+- **If no record exists**, Zite creates one with the user's email (and name, if the fields are configured).
+
+This means `context.user.id` becomes the **database record ID** — not the portal user ID. Use this when creating records that belong to a user:
+
+```typescript
+execute: async ({ input, context }) => {
+  // context.user.id is the record ID from the users table
+  return await Tasks.create({
+    name: input.name,
+    ownerId: context.user.id,
+  });
+}
+```
+
+### Use synced fields in endpoints
+
+All fields from the users table are available on `context.user`:
+
+```typescript
+execute: async ({ context }) => {
+  const role = context.user.role;           // custom field from users table
+  const department = context.user.department; // custom field from users table
+
+  if (role !== "admin") {
+    throw new ZiteError({ code: "FORBIDDEN", message: "Admins only" });
+  }
+}
+```
+
+### Use synced fields in permissions
+
+Synced fields work in [permission rules](/permissions) with `user_field_match` conditions:
+
+```json title="zite.roles.json"
+{
+  "name": "admin",
+  "condition": {
+    "type": "user_field_match",
+    "userField": "role",
+    "operator": "equals",
+    "value": "admin"
+  }
+}
+```
+
+<Tip>
+  User sync works with any database integration — Airtable, Zite Database, or others. Point it at whichever table holds your user records.
+</Tip>
+
+## Protecting routes
+
+For external apps, you typically want some pages to require authentication and others to be public. Handle this in your page components:
+
+```typescript
+import { useAuth } from ".zite/auth";
+
+export default function Dashboard() {
+  const { user, isLoading, loginWithRedirect } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  // Redirect to sign-in if not authenticated
+  if (!user) {
+    loginWithRedirect({ redirectUrl: "/dashboard" });
+    return null;
+  }
+
+  return <DashboardContent user={user} />;
+}
+```
+
+For public pages that optionally show user info:
+
+```typescript
+import { useAuth } from ".zite/auth";
+
+export default function Home() {
+  const { user, loginWithRedirect, logout } = useAuth();
+
+  return (
+    <div>
+      <h1>Welcome to our app</h1>
+      {user ? (
+        <button onClick={() => logout()}>Sign out ({user.email})</button>
+      ) : (
+        <button onClick={() => loginWithRedirect()}>Sign in</button>
+      )}
+    </div>
+  );
+}
+```

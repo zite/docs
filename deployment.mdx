@@ -1,6 +1,90 @@
 ---
 title: "Deployment"
 description: "Deploy, rollback, and manage your live apps"
+icon: "cloud-upload"
 ---
 
-{/* TODO: Document deploying to Zite, GitHub integration, auto-deploy, rollbacks, and custom domains */}
+Zite apps deploy automatically when you push to your connected GitHub repository. Every push creates a new deployment that you can view, inspect, and roll back to.
+
+## Push to deploy
+
+Commit and push your changes:
+
+```bash
+git add .
+git commit -m "Add task filtering"
+git push
+```
+
+Zite builds and deploys your app automatically. Your app is live at `https://<your-app-id>.zite.so`.
+
+View deployment status on the **Overview** page of your [dashboard](https://zite.com/dashboard).
+
+## Manual deployment
+
+You can also deploy without pushing to Git:
+
+```bash
+zite deploy
+```
+
+This builds and deploys the current state of your local project.
+
+## View deployments
+
+The **Deployments** page in your dashboard shows a history of every deployment with:
+
+- Timestamp and status
+- The commit that triggered the deployment
+- Who made the change
+
+## Rollback
+
+To roll back to a previous deployment, select it in the dashboard and click **Rollback**. This redeploys the selected version without modifying your Git history.
+
+<Tip>
+  Rollbacks are instant — they redeploy an existing build rather than rebuilding from source.
+</Tip>
+
+## Custom domains
+
+By default, your app is available at `https://<your-app-id>.zite.so`. You can add a custom domain in the **Settings** page of your dashboard.
+
+<Steps>
+
+<Step title="Add your domain">
+
+Go to **Settings > Custom domains** in your dashboard and enter your domain.
+
+</Step>
+
+<Step title="Update your DNS">
+
+Add a CNAME record pointing your domain to `cname.zite.so`.
+
+</Step>
+
+<Step title="Wait for verification">
+
+Zite provisions an SSL certificate automatically. This usually takes a few minutes.
+
+</Step>
+
+</Steps>
+
+## Preview vs production
+
+Every deployment has two environments:
+
+| Environment | URL | Description |
+|---|---|---|
+| Production | `https://<your-app-id>.zite.so` | The live version of your app, served to users. |
+| Preview | Shown in dashboard | A preview of your latest push, accessible from the dashboard before promoting to production. |
+
+## Audit logs
+
+Every deployment and API request is logged. View audit logs in your dashboard to see:
+
+- All SDK calls made by the app (which tables were read/written, by whom)
+- Deployment history and who triggered each deploy
+- Permission checks and denials

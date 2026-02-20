@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "almond",
   "name": "Zite.js",
   "colors": {
     "primary": "#212124",
@@ -8,22 +8,32 @@
     "dark": "#212124"
   },
   "favicon": "/favicon.svg",
+  "icons": {
+    "library": "lucide"
+  },
+  "interaction": {
+    "drilldown": false
+  },
   "navigation": {
     "groups": [
       {
         "group": "Getting started",
-        "pages": ["index", "quickstart", "project-structure"]
+        "icon": "rocket",
+        "pages": ["quickstart", "ai-skill", "project-structure"]
       },
       {
         "group": "Core concepts",
-        "pages": ["integrations", "permissions", "internal-apps", "workflows"]
+        "icon": "book-open",
+        "pages": ["integrations", "endpoints", "permissions", "authentication", "internal-apps"]
       },
       {
         "group": "CLI",
+        "icon": "terminal",
         "pages": ["cli/installation", "cli/commands"]
       },
       {
         "group": "Deployment",
+        "icon": "cloud-upload",
         "pages": ["deployment"]
       }
     ]
@@ -44,6 +54,9 @@
       "label": "Dashboard",
       "href": "https://zite.com/dashboard"
     }
+  },
+  "contextual": {
+    "options": ["copy", "claude", "cursor"]
   },
   "footer": {
     "socials": {
