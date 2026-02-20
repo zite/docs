@@ -1,97 +1,42 @@
 ---
 title: "Introduction"
-description: "Welcome to the new home for your documentation"
+description: "The framework for building apps with integrations, permissions, and deployment built in"
 ---
 
-## Setting up
+Zite.js is a framework for building internal tools and business apps. It connects to your services, generates type-safe SDKs, and gives you row-level permissions out of the box.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
+<Card title="Get started" icon="rocket" href="/quickstart" horizontal>
+  Install the CLI, connect an integration, and deploy your first app.
 </Card>
 
-## Make it yours
+## Why Zite.js
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<Columns cols={3}>
+  <Card title="Integrations" icon="plug">
+    Connect Airtable, Stripe, Postgres, and other services with a single command. Zite generates type-safe SDKs from your live data — no manual API wrangling.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Permissions" icon="shield">
+    Define row-level permissions in your code. Control which tables, fields, and records each user can access — whether your app is internal or public.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Internal apps" icon="lock">
+    Build apps that are only accessible to your team. Authentication is handled automatically through your Zite workspace.
   </Card>
 </Columns>
 
-## Create beautiful pages
+## How it works
 
-Everything you need to create world-class documentation.
+<Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Step title="Connect your services">
+  Link Airtable, Stripe, Postgres, or any supported integration. Zite generates SDKs with full type safety from your live schema.
+</Step>
 
-## Need inspiration?
+<Step title="Build your app">
+  Write your app using the auto-generated SDKs. Define permissions directly in code to control data access.
+</Step>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Step title="Deploy">
+  Push to GitHub and your app is live. Zite handles hosting, authentication, and audit logging.
+</Step>
+
+</Steps>
